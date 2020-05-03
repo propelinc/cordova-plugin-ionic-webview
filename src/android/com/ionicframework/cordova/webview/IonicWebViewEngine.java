@@ -16,6 +16,7 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import java.io.File;
 import org.apache.cordova.ConfigXmlParser;
 import org.apache.cordova.CordovaInterface;
 import org.apache.cordova.CordovaPreferences;
@@ -55,6 +56,27 @@ public class IonicWebViewEngine extends SystemWebViewEngine {
     Log.d(TAG, "Ionic Web View Engine Starting Right Up 3...");
   }
 
+  private String[] getHostnameAndScheme(CordovaInterface cordova) {
+    File filesDir = cordova.getActivity().getFilesDir();
+    String root = filesDir.getParentFile().getAbsolutePath();
+    String[] pathArray = {"/app_webview/IndexedDB/", "/app_webview/Default/IndexedDB/"};
+    for (int i = 0; i < pathArray.length; i++) {
+      String srcPath = root + pathArray[i] + "http_localhost_0.indexeddb.leveldb";
+      File src = new File(srcPath);
+      if (src.exists()) {
+        Log.i(TAG, "Old IndexedDB data found.");
+        String[] result = {"localhost", "http"};
+        return result;
+      }
+    }
+
+    String[] result = {
+      preferences.getString("Hostname", "localhost"),
+      preferences.getString("Scheme", "http")
+    };
+    return result;
+  }
+
   @Override
   public void init(CordovaWebView parentWebView, CordovaInterface cordova, final CordovaWebViewEngine.Client client,
                    CordovaResourceApi resourceApi, PluginManager pluginManager,
@@ -62,8 +84,9 @@ public class IonicWebViewEngine extends SystemWebViewEngine {
     ConfigXmlParser parser = new ConfigXmlParser();
     parser.parse(cordova.getActivity());
 
-    String hostname = preferences.getString("Hostname", "localhost");
-    scheme = preferences.getString("Scheme", "http");
+    String[] hostnameAndScheme = getHostnameAndScheme(cordova);
+    String hostname = hostnameAndScheme[0];
+    scheme = hostnameAndScheme[1];
     CDV_LOCAL_SERVER = scheme + "://" + hostname;
 
     localServer = new WebViewLocalServer(cordova.getActivity(), hostname, true, parser, scheme);
